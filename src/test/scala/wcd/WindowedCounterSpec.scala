@@ -1,4 +1,5 @@
-import wcd.WindowedCounter
+package wcd
+
 import zio._
 import zio.test.{TestClock, ZIOSpecDefault, assertTrue}
 
