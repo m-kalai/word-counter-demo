@@ -7,7 +7,17 @@ import zio.stm.{TQueue, TRef, ZSTM}
 import java.util.concurrent.TimeUnit
 
 trait Counter {
+  /**
+   * store word count of single event
+   * @param count word count
+   * @return
+   */
   def mark(count: Int): Task[Unit]
+
+  /**
+   * get aggregated word count of all the events in a given window
+   * @return aggregated word count
+   */
   def getCount: Task[Int]
 }
 
