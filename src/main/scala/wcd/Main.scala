@@ -20,8 +20,12 @@ object Main extends ZIOAppDefault {
     // execute binary and process events
     _ <- EventStream
       .fromCommand(args.head)
-      .map(e => e.event.eventType -> e.event.word.split(" ").length)
-      .mapZIO { case (key, count) => repository.update(key, count) }
+      .groupByKey(_.event.eventType) { case (evenType, s) =>
+        s.map(e => evenType -> e.event.word.split(" ").length)
+          .mapZIO { case (key, count) =>
+            repository.update(key, count)
+          }
+      }
       .runCollect
   } yield ()
 }
