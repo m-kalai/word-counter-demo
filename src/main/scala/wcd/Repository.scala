@@ -3,28 +3,28 @@ package wcd
 import zio._
 import zio.concurrent.ConcurrentMap
 
-trait Repository {
+trait Repository[T] {
   def duration(): Duration
-  def getAll(): Task[Map[String, Int]]
-  def update(key: String, count: Int): Task[Unit]
+  def getAll(): Task[Map[String, T]]
+  def update(key: String, value: T): Task[Unit]
 }
 
 object CounterRepository {
   def make(duration: Duration) = for {
-    m <- ConcurrentMap.empty[String, Counter]
+    m <- ConcurrentMap.empty[String, Aggregator[Int]]
   } yield new CounterRepository(m, duration)
 }
 
 class CounterRepository(
-    storage: ConcurrentMap[String, Counter],
+    storage: ConcurrentMap[String, Aggregator[Int]],
     duration: Duration
-) extends Repository {
+) extends Repository[Int] {
   override def getAll() =
     storage.toList
       .flatMap(l =>
         ZIO
           .foreach(l) { case (str, counter) =>
-            counter.getCount.map(str -> _)
+            counter.get.map(str -> _)
           }
           .map(_.toMap)
       )
@@ -32,11 +32,11 @@ class CounterRepository(
   override def update(key: String, count: Int) = for {
     c1 <- storage.get(key)
     _ <- c1 match {
-      case Some(value) => value.mark(count)
+      case Some(value) => value.commit(count)
       case None =>
         for {
-          c2 <- WindowedCounter.make(duration)
-          _  <- c2.mark(count)
+          c2 <- SlidingTimeWindowAggregator.makeCounter(duration)
+          _  <- c2.commit(count)
           _  <- storage.put(key, c2)
         } yield ()
     }
